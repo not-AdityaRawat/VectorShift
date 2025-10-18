@@ -32,5 +32,5 @@ export const LLMNode = createNode({
       top: '50%'
     }
   ],
-  icon: <Brain />
+  // icon: <Brain />
 });

@@ -34,7 +34,7 @@ export const InputNode = ({ id, data }) => {
         top: '50%'
       }
     ],
-    icon: <FileInput />
+    // icon: <FileInput />
   });
 
   return <NodeComponent id={id} data={{ inputName: currName, inputType}} />;
