@@ -32,7 +32,8 @@ export const OutputNode = ({ id, data }) => {
         id: 'value',
         top: '50%'
       }
-    ]
+    ],
+    bgColor: 'bg-orange-300'
   });
 
   return <NodeComponent id={id} data={{ outputName: currName, outputType }} />;

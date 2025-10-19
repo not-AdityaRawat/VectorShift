@@ -52,10 +52,7 @@ export const APINode = createNode({
       top: '50%'
     }
   ],
-  style: {
-    width: 220,
-    backgroundColor: '#e3f2fd'
-  }
+  bgColor: 'bg-blue-300'
 });
 
 // Example 2: Transformer node with local state
@@ -94,9 +91,7 @@ export const TransformerNode = ({ id, data }) => {
         top: '50%'
       }
     ],
-    style: {
-      backgroundColor: '#fff3e0'
-    }
+    bgColor: 'bg-amber-300'
   });
 
   return <NodeComponent id={id} data={{ operation, pattern }} />;
@@ -142,9 +137,7 @@ export const ConditionalNode = ({ id, data }) => {
         style: { background: '#f44336' }
       }
     ],
-    style: {
-      backgroundColor: '#f3e5f5'
-    }
+    bgColor: 'bg-purple-300'
   });
 
   return <NodeComponent id={id} data={{ condition }} />;
@@ -193,10 +186,7 @@ export const DatabaseNode = ({ id, data }) => {
         top: '50%'
       }
     ],
-    style: {
-      width: 240,
-      backgroundColor: '#e8f5e9'
-    }
+    bgColor: 'bg-emerald-300'
   });
 
   return <NodeComponent id={id} data={{ dbType, query, table }} />;

@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Type } from 'lucide-react';
+import { ChartNoAxesColumn, CircleX, TextInitial, Type } from 'lucide-react';
+import { useStore } from '../store';
 
 export const TextNode = ({ id, data }) => {
   const [currText, setCurrText] = useState(data?.text || '{{input}}');
   const [variables, setVariables] = useState([]);
+  const [nodeWidth, setNodeWidth] = useState('w-56');
   const textareaRef = useRef(null);
+  const { onNodesChange } = useStore();
 
   // Extract variables from text (e.g., {{variable_name}})
   useEffect(() => {
@@ -25,79 +28,50 @@ export const TextNode = ({ id, data }) => {
     }
   }, [currText]);
 
+  // Calculate node width based on text length
+  useEffect(() => {
+    const lines = currText.split('\n');
+    const maxLineLength = Math.max(...lines.map(line => line.length), 10);
+    const calculatedWidth = Math.max(200, Math.min(400, maxLineLength * 8 + 40));
+    setNodeWidth(`w-[${calculatedWidth}px]`);
+  }, [currText]);
+
   const handleTextChange = (e) => {
     setCurrText(e.target.value);
   };
 
-  // Calculate node width based on text length
-  const calculateWidth = () => {
-    const lines = currText.split('\n');
-    const maxLineLength = Math.max(...lines.map(line => line.length), 10);
-    return Math.max(200, Math.min(400, maxLineLength * 8 + 40)); // Min 200, Max 400
-  };
-
+  const handleDelete = () => {
+    onNodesChange([{ type: 'remove', id }]);
+  };  
+  
   return (
-    <div style={{
-      width: calculateWidth(),
-      height: 'auto',
-      border: '1px solid black',
-      borderRadius: '8px',
-      padding: '10px',
-      backgroundColor: '#fff',
-      position: 'relative'
-    }}>
+    <div className={`${nodeWidth} h-auto border border-black rounded-sm p-2.5 bg-violet-400 relative`}>
       {/* Header */}
-      <div style={{
-        fontWeight: 'bold',
-        marginBottom: '10px',
-        fontSize: '14px',
-        textAlign: 'center',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '8px'
-      }}>
-        <Type size={16} />
-        Text
+      <div className="flex flex-col bg-violet-100 mb-2.5 p-3 gap-1 rounded">
+        <div className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TextInitial size={16} />
+            <span className="font-bold text-sm">Text</span>
+          </div>
+          <CircleX size={16} className='cursor-pointer hover:text-red-700' onClick={handleDelete}/>
+        </div>
+        <div className="text-xs font-mono text-gray-700">Parse data of different types</div>
       </div>
-
-      {/* Text Input */}
-      <div style={{ marginBottom: '10px' }}>
-        <label style={{
-          display: 'block',
-          fontSize: '12px',
-          marginBottom: '5px'
-        }}>
+      <div className="mb-2.5">
+        <label className="block text-xs font-medium mb-1 text-slate-200">
           Text:
         </label>
         <textarea
           ref={textareaRef}
           value={currText}
           onChange={handleTextChange}
-          style={{
-            width: '100%',
-            padding: '5px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            fontSize: '12px',
-            minHeight: '60px',
-            resize: 'vertical',
-            fontFamily: 'monospace',
-            overflow: 'hidden'
-          }}
+          className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs font-mono overflow-hidden resize-vertical min-h-[60px]"
         />
       </div>
 
       {/* Display detected variables */}
       {variables.length > 0 && (
-        <div style={{
-          fontSize: '10px',
-          color: '#666',
-          marginTop: '5px',
-          padding: '5px',
-          backgroundColor: '#f0f0f0',
-          borderRadius: '4px'
-        }}>
+        <div className="text-xs text-gray-600 mt-1 p-1 bg-gray-100 rounded">
           Variables: {variables.join(', ')}
         </div>
       )}
@@ -119,19 +93,7 @@ export const TextNode = ({ id, data }) => {
               background: '#555'
             }}
           >
-            <div style={{
-              position: 'absolute',
-              left: '-60px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: '10px',
-              color: '#666',
-              whiteSpace: 'nowrap',
-              backgroundColor: '#fff',
-              padding: '2px 4px',
-              borderRadius: '3px',
-              border: '1px solid #ccc'
-            }}>
+            <div className="absolute left-[-60px] top-1/2 -translate-y-1/2 text-xs text-gray-600 whitespace-nowrap bg-white px-1 py-0.5 rounded border border-gray-300">
               {variable}
             </div>
           </Handle>

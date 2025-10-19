@@ -2,7 +2,6 @@
 
 import { Position } from 'reactflow';
 import { createNode } from './nodeFactory';
-import { Brain } from 'lucide-react';
 
 export const LLMNode = createNode({
   title: 'LLM',
@@ -32,5 +31,6 @@ export const LLMNode = createNode({
       top: '50%'
     }
   ],
+  bgColor: 'bg-pink-300',
   // icon: <Brain />
 });

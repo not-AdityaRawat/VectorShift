@@ -34,6 +34,7 @@ export const InputNode = ({ id, data }) => {
         top: '50%'
       }
     ],
+    bgColor: 'bg-green-300',
     // icon: <FileInput />
   });
 
