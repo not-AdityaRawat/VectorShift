@@ -3,19 +3,24 @@
 import { useState } from 'react';
 import { Position } from 'reactflow';
 import { createNode } from './nodeFactory';
+import { FileOutput } from 'lucide-react';
 
 export const OutputNode = ({ id, data }) => {
   const [currName, setCurrName] = useState(data?.outputName || id.replace('customOutput-', 'output_'));
-  const [outputType, setOutputType] = useState(data.outputType || 'Text');
+  const [outputType, setOutputType] = useState(data?.outputType || 'Text');
 
   const NodeComponent = createNode({
     title: 'Output',
+    icon: FileOutput,
+    bgColor: 'bg-orange-300',
+    description: `Variable: ${currName}`,
     fields: [
       {
         label: 'Name',
         name: 'outputName',
         type: 'text',
-        onChange: (id, field, value) => setCurrName(value)
+        onChange: (id, field, value) => setCurrName(value),
+        placeholder: 'e.g., result, final_output'
       },
       {
         label: 'Type',
@@ -32,8 +37,7 @@ export const OutputNode = ({ id, data }) => {
         id: 'value',
         top: '50%'
       }
-    ],
-    bgColor: 'bg-orange-300'
+    ]
   });
 
   return <NodeComponent id={id} data={{ outputName: currName, outputType }} />;

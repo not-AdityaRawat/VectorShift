@@ -9,25 +9,23 @@ import {
   Layers,
   History,
   HelpCircle,
-  FileInputIcon,
-  BookA,
   Menu
 } from 'lucide-react';
 import { SubmitButton } from './submit';
 import { PipelineToolbar } from './toolbar';
 
 export function Navbar({ onTabChange }) {
-const [activeNodes, setActiveNodes] = useState(['input', 'output', 'text', 'note','comment']);
+const [activeNodes, setActiveNodes] = useState(['input', 'output', 'text','comment','validator']);
   const [activeTab, setActiveTab] = useState('Start');
 
   const tabs = [
-    { id: 'Start', label: 'Start', icon: Layers,nodes:['input','output','text','note','comment'] },
+    { id: 'Start', label: 'Start', icon: Layers,nodes:['input','output','text','comment'] },
     { id: 'Objects', label: 'Objects', icon: null,nodes:[] },
     { id: 'Knowledge', label: 'Knowledge', icon: null,nodes:[] },
     { id: 'AI', label: 'AI', icon: null,nodes:['llm'] },
     { id: 'Integrations', label: 'Integrations', icon: null,nodes:[] },
     { id: 'Logic', label: 'Logic', icon: null,nodes:[] },
-    { id: 'Data', label: 'Data', icon: null,nodes:[] },
+    { id: 'Data', label: 'Data', icon: null,nodes:['validator'] },
     { id: 'Chat', label: 'Chat', icon: null,nodes:[] },
   ];
 

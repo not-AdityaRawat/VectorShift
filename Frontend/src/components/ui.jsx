@@ -11,6 +11,7 @@ import { LLMNode } from '../nodes/llmNode';
 import { OutputNode } from '../nodes/outputNode';
 import { TextNode } from '../nodes/textNode';
 import { CommentNode } from '../nodes/commentNode';
+import { ValidatorNode } from '../nodes/validatorNode';
 
 import 'reactflow/dist/style.css';
 
@@ -22,6 +23,7 @@ const nodeTypes = {
   customOutput: OutputNode,
   text: TextNode,
   comment: CommentNode,
+  validator: ValidatorNode,
 };
 
 const selector = (state) => ({
