@@ -1,14 +1,15 @@
 // toolbar.js
 
+import { Bot, FileInputIcon, FileOutputIcon, NotebookPenIcon, TextInitial } from 'lucide-react';
 import { DraggableNode } from '../draggableNode';
 
 // Node type mapping
 const nodeTypeMap = {
-  'input': { type: 'customInput', label: 'Input' },
-  'output': { type: 'customOutput', label: 'Output' },
-  'text': { type: 'text', label: 'Text' },
-  'note': { type: 'note', label: 'Note' },
-  'llm': { type: 'llm', label: 'LLM' },
+  'input': { type: 'customInput', label: 'Input', icon:<FileInputIcon/> },
+  'output': { type: 'customOutput', label: 'Output', icon:<FileOutputIcon/> },
+  'text': { type: 'text', label: 'Text', icon:<TextInitial/> },
+  'note': { type: 'note', label: 'Note', icon:<NotebookPenIcon/> },
+  'llm': { type: 'llm', label: 'LLM', icon:<Bot/> },
 };
 
 export const PipelineToolbar = ({ activeNodes = [] }) => {
@@ -24,10 +25,12 @@ export const PipelineToolbar = ({ activeNodes = [] }) => {
                         const nodeConfig = nodeTypeMap[nodeKey];
                         if (!nodeConfig) return null;
                         return (
+                            
                             <DraggableNode 
                                 key={nodeKey}
                                 type={nodeConfig.type} 
                                 label={nodeConfig.label} 
+                                icon={nodeConfig.icon}
                             />
                         );
                     })
