@@ -17,11 +17,11 @@ import { SubmitButton } from './submit';
 import { PipelineToolbar } from './toolbar';
 
 export function Navbar({ onTabChange }) {
-const [activeNodes, setActiveNodes] = useState(['input', 'output', 'text', 'note']);
+const [activeNodes, setActiveNodes] = useState(['input', 'output', 'text', 'note','comment']);
   const [activeTab, setActiveTab] = useState('Start');
 
   const tabs = [
-    { id: 'Start', label: 'Start', icon: Layers,nodes:['input','output','text','note'] },
+    { id: 'Start', label: 'Start', icon: Layers,nodes:['input','output','text','note','comment'] },
     { id: 'Objects', label: 'Objects', icon: null,nodes:[] },
     { id: 'Knowledge', label: 'Knowledge', icon: null,nodes:[] },
     { id: 'AI', label: 'AI', icon: null,nodes:['llm'] },
