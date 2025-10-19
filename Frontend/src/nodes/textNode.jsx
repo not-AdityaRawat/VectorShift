@@ -1,38 +1,38 @@
 // textNode.js
 
-import { useState } from 'react';
+import { memo } from 'react';
 import { Position } from 'reactflow';
 import { createNode } from './nodeFactory';
 import { TextInitial } from 'lucide-react';
 
-export const TextNode = ({ id, data }) => {
-  const [currText, setCurrText] = useState(data?.text || '{{input}}');
+// Create the node component OUTSIDE to avoid recreating on every render
+const TextNodeConfig = createNode({
+  title: 'Text',
+  icon: TextInitial,
+  bgColor: 'bg-violet-400',
+  description: 'Parse data of different types',
+  enableVariableExtraction: true,
+  variableFieldName: 'text',
+  autoResize: true,
+  fields: [
+    {
+      label: 'Text',
+      name: 'text',
+      type: 'textarea'
+    }
+  ],
+  handles: [
+    {
+      type: 'source',
+      position: Position.Right,
+      id: 'output',
+      top: '50%'
+    }
+  ]
+});
 
-  const NodeComponent = createNode({
-    title: 'Text',
-    icon: TextInitial,
-    bgColor: 'bg-violet-400',
-    description: 'Parse data of different types',
-    enableVariableExtraction: true,
-    variableFieldName: 'text',
-    autoResize: true,
-    fields: [
-      {
-        label: 'Text',
-        name: 'text',
-        type: 'textarea',
-        onChange: (id, field, value) => setCurrText(value)
-      }
-    ],
-    handles: [
-      {
-        type: 'source',
-        position: Position.Right,
-        id: 'output',
-        top: '50%'
-      }
-    ]
-  });
-
-  return <NodeComponent id={id} data={{ text: currText }} />;
+const TextNodeComponent = ({ id, data }) => {
+  return <TextNodeConfig id={id} data={data} />;
 };
+
+export const TextNode = memo(TextNodeComponent);

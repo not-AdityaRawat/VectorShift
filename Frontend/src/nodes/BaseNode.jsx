@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { CircleX } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useStore } from '../store';
 
-export const BaseNode = ({ id, data, config }) => {
+const BaseNodeComponent = ({ id, data, config }) => {
   const {
     title,
     fields = [],
@@ -25,6 +25,51 @@ export const BaseNode = ({ id, data, config }) => {
   const [nodeWidth, setNodeWidth] = useState('w-56');
   const [editableNodeTitle, setEditableNodeTitle] = useState(data?.[titleFieldName] || title);
   const textareaRef = useRef(null);
+  const isUpdatingRef = useRef(false);
+  
+  // Local state for each field to ensure responsive UI
+  const [fieldValues, setFieldValues] = useState(() => {
+    const initialValues = {};
+    fields.forEach(field => {
+      if (field.name) {
+        initialValues[field.name] = data?.[field.name] || '';
+      }
+    });
+    return initialValues;
+  });
+
+  // Sync local state with store data when it changes from outside
+  useEffect(() => {
+    // Skip sync if we're the ones who triggered the update
+    if (isUpdatingRef.current) {
+      isUpdatingRef.current = false;
+      return;
+    }
+    
+    let hasUpdates = false;
+    const updates = {};
+    
+    fields.forEach(field => {
+      if (field.name && data?.[field.name] !== undefined) {
+        const storeValue = data[field.name];
+        const localValue = fieldValues[field.name];
+        // Only update if the store value is actually different
+        if (storeValue !== localValue) {
+          updates[field.name] = storeValue;
+          hasUpdates = true;
+        }
+      }
+    });
+    
+    if (hasUpdates) {
+      setFieldValues(prev => ({ ...prev, ...updates }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  // Memoize the specific field value to prevent unnecessary re-renders during dragging
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fieldValue = useMemo(() => fieldValues[variableFieldName], [fieldValues[variableFieldName]]);
 
   // Resolve icon: allow passing a component or a string name (e.g. "Activity")
   const Icon = icon
@@ -33,8 +78,7 @@ export const BaseNode = ({ id, data, config }) => {
 
   // Extract variables from text (e.g., {{variable_name}})
   useEffect(() => {
-    if (enableVariableExtraction && data && data[variableFieldName]) {
-      const fieldValue = data[variableFieldName];
+    if (enableVariableExtraction && fieldValue) {
       const regex = /\{\{([a-zA-Z_$][a-zA-Z0-9_$]*)\}\}/g;
       const matches = [...fieldValue.matchAll(regex)];
       const extractedVars = [...new Set(matches.map(match => match[1]))];
@@ -42,26 +86,30 @@ export const BaseNode = ({ id, data, config }) => {
     } else if (enableVariableExtraction) {
       setVariables([]);
     }
-  }, [data, enableVariableExtraction, variableFieldName]);
+  }, [fieldValue, enableVariableExtraction]);
 
   // Auto-resize textarea based on content
   useEffect(() => {
-    if (autoResize && textareaRef.current && data && data[variableFieldName]) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    if (autoResize && textareaRef.current && fieldValue) {
+      // Defer DOM manipulation to avoid interfering with React's render cycle
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+      });
     }
-  }, [data, variableFieldName, autoResize]);
+  }, [fieldValue, autoResize]);
 
   // Calculate node width based on content
   useEffect(() => {
-    if (autoResize && data && data[variableFieldName]) {
-      const fieldValue = data[variableFieldName];
+    if (autoResize && fieldValue) {
       const lines = fieldValue.split('\n');
       const maxLineLength = Math.max(...lines.map(line => line.length), 10);
       const calculatedWidth = Math.max(200, Math.min(400, maxLineLength * 8 + 40));
       setNodeWidth(`w-[${calculatedWidth}px]`);
     }
-  }, [data, variableFieldName, autoResize]);
+  }, [fieldValue, autoResize]);
 
   const handleDelete = () => {
     onNodesChange([{ type: 'remove', id }]);
@@ -71,6 +119,15 @@ export const BaseNode = ({ id, data, config }) => {
     const newTitle = e.target.value;
     setEditableNodeTitle(newTitle);
     updateNodeField(id, titleFieldName, newTitle);
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    // Update local state immediately for responsive UI
+    setFieldValues(prev => ({ ...prev, [fieldName]: value }));
+    // Mark that we're updating to prevent sync loop
+    isUpdatingRef.current = true;
+    // Also update the store
+    updateNodeField(id, fieldName, value);
   };
 
   return (
@@ -110,8 +167,8 @@ export const BaseNode = ({ id, data, config }) => {
           {field.type === 'text' && (
             <input
               type="text"
-              value={data[field.name] || ''}
-              onChange={(e) => field.onChange(id, field.name, e.target.value)}
+              value={fieldValues[field.name] || ''}
+              onChange={(e) => handleFieldChange(field.name, e.target.value)}
               className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs overflow-hidden"
               placeholder={field.placeholder || ''}
             />
@@ -119,16 +176,16 @@ export const BaseNode = ({ id, data, config }) => {
           {field.type === 'textarea' && (
             <textarea
               ref={field.name === variableFieldName && autoResize ? textareaRef : null}
-              value={data[field.name] || ''}
-              onChange={(e) => field.onChange(id, field.name, e.target.value)}
+              value={fieldValues[field.name] || ''}
+              onChange={(e) => handleFieldChange(field.name, e.target.value)}
               className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs font-mono overflow-hidden resize-vertical min-h-[60px]"
               placeholder={field.placeholder || ''}
             />
           )}
           {field.type === 'select' && (
             <select
-              value={data[field.name] || field.options[0]}
-              onChange={(e) => field.onChange(id, field.name, e.target.value)}
+              value={fieldValues[field.name] || field.options[0]}
+              onChange={(e) => handleFieldChange(field.name, e.target.value)}
               className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs"
             >
               {field.options.map((option) => (
@@ -140,7 +197,7 @@ export const BaseNode = ({ id, data, config }) => {
           )}
           {field.type === 'display' && (
             <span className="text-xs text-gray-600 block">
-              {field.content || data[field.name] || ''}
+              {field.content || fieldValues[field.name] || ''}
             </span>
           )}
         </div>
@@ -194,3 +251,17 @@ export const BaseNode = ({ id, data, config }) => {
     </div>
   );
 };
+
+// Memoize the component to prevent re-renders when other nodes change
+export const BaseNode = memo(BaseNodeComponent, (prevProps, nextProps) => {
+  // Return true if props are equal (skip re-render)
+  // Return false if props are different (allow re-render)
+  if (prevProps.id !== nextProps.id) return false;
+  if (prevProps.config !== nextProps.config) return false;
+  
+  // Deep compare data object
+  const prevData = JSON.stringify(prevProps.data);
+  const nextData = JSON.stringify(nextProps.data);
+  
+  return prevData === nextData;
+});
