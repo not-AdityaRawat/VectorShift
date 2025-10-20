@@ -3,7 +3,7 @@
 // --------------------------------------------------
 
 import { useState, useRef, useCallback } from 'react';
-import ReactFlow, { Controls, Background, MiniMap } from 'reactflow';
+import ReactFlow, { Controls, Background, MiniMap, MarkerType } from 'reactflow';
 import { useStore } from '../store';
 import { shallow } from 'zustand/shallow';
 import { InputNode } from '../nodes/inputNode';
@@ -108,6 +108,12 @@ export const PipelineUI = () => {
                 proOptions={proOptions}
                 snapGrid={[gridSize, gridSize]}
                 connectionLineType='smoothstep'
+                connectOnClick={true}
+                defaultEdgeOptions={{
+                  type: 'smoothstep',
+                  animated: true,
+                  markerEnd: { type: MarkerType.Arrow }
+                }}
             >
                 <Background color="#aaa" gap={gridSize} />
                 <Controls />

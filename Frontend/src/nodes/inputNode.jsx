@@ -9,6 +9,7 @@ import { FileInput } from 'lucide-react';
 const InputNodeConfig = createNode({
   title: 'Input',
   icon: FileInput,
+  description:"Pass data of different types into your workspace",
   bgColor: 'bg-green-300',
   fields: [
     {
@@ -29,6 +30,7 @@ const InputNodeConfig = createNode({
       type: 'source',
       position: Position.Right,
       id: 'value',
+      dynamicId: 'inputName', // Use inputName field value as handle ID
       top: '50%'
     }
   ]

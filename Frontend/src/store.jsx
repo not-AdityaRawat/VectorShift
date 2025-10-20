@@ -53,4 +53,73 @@ export const useStore = create((set, get) => ({
         }),
       });
     },
+    // Get all available variables from Input and Output nodes
+    getAvailableVariables: () => {
+      const nodes = get().nodes;
+      const variables = [];
+      
+      nodes.forEach(node => {
+        // Get variables from Input nodes
+        if (node.type === 'customInput' && node.data.inputName) {
+          variables.push({
+            name: node.data.inputName,
+            type: 'input',
+            nodeId: node.id
+          });
+        }
+        // Get variables from Output nodes
+        if (node.type === 'customOutput' && node.data.outputName) {
+          variables.push({
+            name: node.data.outputName,
+            type: 'output',
+            nodeId: node.id
+          });
+        }
+      });
+      
+      return variables;
+    },
+    // Auto-connect variables to their source nodes
+    autoConnectVariable: (targetNodeId, variableName) => {
+      const nodes = get().nodes;
+      const edges = get().edges;
+      
+      // Find the source node that defines this variable
+      const sourceNode = nodes.find(node => 
+        (node.type === 'customInput' && node.data.inputName === variableName) ||
+        (node.type === 'customOutput' && node.data.outputName === variableName)
+      );
+      
+      if (!sourceNode) return; // Variable source not found
+      
+      // Determine the handle IDs
+      const sourceHandleId = `${sourceNode.id}-${variableName}`;
+      const targetHandleId = `${targetNodeId}-${variableName}`;
+      
+      // Check if connection already exists
+      const connectionExists = edges.some(edge => 
+        edge.source === sourceNode.id && 
+        edge.sourceHandle === sourceHandleId &&
+        edge.target === targetNodeId && 
+        edge.targetHandle === targetHandleId
+      );
+      
+      if (connectionExists) return; // Connection already exists
+      
+      // Create the connection
+      const newEdge = {
+        id: `${sourceNode.id}-${targetNodeId}-${variableName}`,
+        source: sourceNode.id,
+        sourceHandle: sourceHandleId,
+        target: targetNodeId,
+        targetHandle: targetHandleId,
+        type: 'smoothstep',
+        animated: true,
+        markerEnd: { type: MarkerType.Arrow, height: '20px', width: '20px' }
+      };
+      
+      set({
+        edges: [...edges, newEdge]
+      });
+    },
   }));

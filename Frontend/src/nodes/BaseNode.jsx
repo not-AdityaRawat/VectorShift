@@ -20,12 +20,19 @@ const BaseNodeComponent = ({ id, data, config }) => {
     showHandles = true
   } = config;
   
-  const { onNodesChange, updateNodeField } = useStore();
+  const { onNodesChange, updateNodeField, getAvailableVariables, autoConnectVariable } = useStore();
   const [variables, setVariables] = useState([]);
   const [nodeWidth, setNodeWidth] = useState('w-56');
   const [editableNodeTitle, setEditableNodeTitle] = useState(data?.[titleFieldName] || title);
   const textareaRef = useRef(null);
   const isUpdatingRef = useRef(false);
+  
+  // Autocomplete state
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteSearch, setAutocompleteSearch] = useState('');
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [activeFieldName, setActiveFieldName] = useState(null);
+  const autocompleteRef = useRef(null);
   
   // Local state for each field to ensure responsive UI
   const [fieldValues, setFieldValues] = useState(() => {
@@ -71,6 +78,21 @@ const BaseNodeComponent = ({ id, data, config }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fieldValue = useMemo(() => fieldValues[variableFieldName], [fieldValues[variableFieldName]]);
 
+  // Compute dynamic handle IDs based on field values
+  const dynamicHandles = useMemo(() => {
+    return handles.map(handle => {
+      // If handle.dynamicId is set, use the field's value as the handle ID
+      if (handle.dynamicId) {
+        const dynamicValue = fieldValues[handle.dynamicId];
+        return {
+          ...handle,
+          id: dynamicValue || handle.id || 'value'
+        };
+      }
+      return handle;
+    });
+  }, [handles, fieldValues]);
+
   // Resolve icon: allow passing a component or a string name (e.g. "Activity")
   const Icon = icon
     ? (typeof icon === 'string' ? LucideIcons[icon] : icon)
@@ -83,10 +105,15 @@ const BaseNodeComponent = ({ id, data, config }) => {
       const matches = [...fieldValue.matchAll(regex)];
       const extractedVars = [...new Set(matches.map(match => match[1]))];
       setVariables(extractedVars);
+      
+      // Auto-connect each detected variable to its source
+      extractedVars.forEach(varName => {
+        autoConnectVariable(id, varName);
+      });
     } else if (enableVariableExtraction) {
       setVariables([]);
     }
-  }, [fieldValue, enableVariableExtraction]);
+  }, [fieldValue, enableVariableExtraction, id, autoConnectVariable]);
 
   // Auto-resize textarea based on content
   useEffect(() => {
@@ -121,14 +148,96 @@ const BaseNodeComponent = ({ id, data, config }) => {
     updateNodeField(id, titleFieldName, newTitle);
   };
 
-  const handleFieldChange = (fieldName, value) => {
+  const handleFieldChange = (fieldName, value, cursorPos = null) => {
     // Update local state immediately for responsive UI
     setFieldValues(prev => ({ ...prev, [fieldName]: value }));
     // Mark that we're updating to prevent sync loop
     isUpdatingRef.current = true;
     // Also update the store
     updateNodeField(id, fieldName, value);
+    
+    // Check for {{ trigger for autocomplete
+    if (cursorPos !== null) {
+      const textBeforeCursor = value.substring(0, cursorPos);
+      const lastTwoBraces = textBeforeCursor.lastIndexOf('{{');
+      
+      if (lastTwoBraces !== -1) {
+        // Found {{, check if there's no closing }}
+        const textAfterBraces = textBeforeCursor.substring(lastTwoBraces);
+        if (!textAfterBraces.includes('}}')) {
+          // Show autocomplete
+          const searchTerm = textAfterBraces.substring(2); // Remove {{
+          setAutocompleteSearch(searchTerm);
+          setActiveFieldName(fieldName);
+          setCursorPosition(cursorPos);
+          setShowAutocomplete(true);
+        } else {
+          setShowAutocomplete(false);
+        }
+      } else {
+        setShowAutocomplete(false);
+      }
+    }
   };
+  
+  // Handle autocomplete selection
+  const handleAutocompleteSelect = (variableName) => {
+    if (!activeFieldName) return;
+    
+    const currentValue = fieldValues[activeFieldName] || '';
+    const textBeforeCursor = currentValue.substring(0, cursorPosition);
+    const textAfterCursor = currentValue.substring(cursorPosition);
+    
+    // Find the {{ before cursor
+    const lastBracesIndex = textBeforeCursor.lastIndexOf('{{');
+    if (lastBracesIndex === -1) return;
+    
+    // Replace from {{ to cursor with {{variableName}}
+    const newValue = 
+      textBeforeCursor.substring(0, lastBracesIndex) + 
+      `{{${variableName}}}` + 
+      textAfterCursor;
+    
+    // Update the field
+    setFieldValues(prev => ({ ...prev, [activeFieldName]: newValue }));
+    isUpdatingRef.current = true;
+    updateNodeField(id, activeFieldName, newValue);
+    
+    // Close autocomplete
+    setShowAutocomplete(false);
+    setAutocompleteSearch('');
+    setActiveFieldName(null);
+  };
+  
+  // Get filtered available variables
+  const availableVariables = useMemo(() => {
+    if (!showAutocomplete) return [];
+    
+    const allVariables = getAvailableVariables();
+    
+    // Filter by search term
+    if (autocompleteSearch) {
+      return allVariables.filter(v => 
+        v.name.toLowerCase().includes(autocompleteSearch.toLowerCase())
+      );
+    }
+    
+    return allVariables;
+  }, [showAutocomplete, autocompleteSearch, getAvailableVariables]);
+  
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target)) {
+        setShowAutocomplete(false);
+      }
+    };
+    
+    if (showAutocomplete) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showAutocomplete]);
 
   return (
     <div className={`${autoResize ? nodeWidth : 'w-56'} h-auto border border-black rounded-sm p-2.5 ${bgColor} relative`}>
@@ -165,22 +274,86 @@ const BaseNodeComponent = ({ id, data, config }) => {
             </label>
           )}
           {field.type === 'text' && (
-            <input
-              type="text"
-              value={fieldValues[field.name] || ''}
-              onChange={(e) => handleFieldChange(field.name, e.target.value)}
-              className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs overflow-hidden"
-              placeholder={field.placeholder || ''}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={fieldValues[field.name] || ''}
+                onChange={(e) => {
+                  const cursorPos = e.target.selectionStart;
+                  handleFieldChange(field.name, e.target.value, cursorPos);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setShowAutocomplete(false);
+                  }
+                }}
+                className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs overflow-hidden"
+                placeholder={field.placeholder || ''}
+              />
+              {showAutocomplete && activeFieldName === field.name && (
+                <div 
+                  ref={autocompleteRef}
+                  className="absolute z-50 mt-1 w-48 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto"
+                  style={{ top: '100%', left: 0 }}
+                >
+                  {availableVariables.length > 0 ? (
+                    availableVariables.map((variable, idx) => (
+                      <div
+                        key={idx}
+                        className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-xs"
+                        onClick={() => handleAutocompleteSelect(variable.name)}
+                      >
+                        <div className="font-semibold">{variable.name}</div>
+                        <div className="text-gray-500 text-[10px]">{variable.type}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-xs text-gray-500">No variables found</div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           {field.type === 'textarea' && (
-            <textarea
-              ref={field.name === variableFieldName && autoResize ? textareaRef : null}
-              value={fieldValues[field.name] || ''}
-              onChange={(e) => handleFieldChange(field.name, e.target.value)}
-              className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs font-mono overflow-hidden resize-vertical min-h-[60px]"
-              placeholder={field.placeholder || ''}
-            />
+            <div className="relative">
+              <textarea
+                ref={field.name === variableFieldName && autoResize ? textareaRef : null}
+                value={fieldValues[field.name] || ''}
+                onChange={(e) => {
+                  const cursorPos = e.target.selectionStart;
+                  handleFieldChange(field.name, e.target.value, cursorPos);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setShowAutocomplete(false);
+                  }
+                }}
+                className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs font-mono overflow-hidden resize-vertical min-h-[60px]"
+                placeholder={field.placeholder || ''}
+              />
+              {showAutocomplete && activeFieldName === field.name && (
+                <div 
+                  ref={autocompleteRef}
+                  className="absolute z-50 mt-1 w-48 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto"
+                  style={{ top: '100%', left: 0 }}
+                >
+                  {availableVariables.length > 0 ? (
+                    availableVariables.map((variable, idx) => (
+                      <div
+                        key={idx}
+                        className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-xs"
+                        onClick={() => handleAutocompleteSelect(variable.name)}
+                      >
+                        <div className="font-semibold">{variable.name}</div>
+                        <div className="text-gray-500 text-[10px]">{variable.type}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-xs text-gray-500">No variables found</div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           {field.type === 'select' && (
             <select
@@ -222,6 +395,7 @@ const BaseNodeComponent = ({ id, data, config }) => {
             type="target"
             position={Position.Left}
             id={`${id}-${variable}`}
+            isConnectable={true}
             style={{
               top: topPosition,
               background: '#555'
@@ -235,12 +409,13 @@ const BaseNodeComponent = ({ id, data, config }) => {
       })}
 
       {/* Static Handles */}
-      {showHandles && handles.map((handle, index) => (
+      {showHandles && dynamicHandles.map((handle, index) => (
         <Handle
           key={index}
           type={handle.type}
           position={handle.position}
           id={`${id}-${handle.id}`}
+          isConnectable={true}
           style={{
             top: handle.top,
             background: '#555',

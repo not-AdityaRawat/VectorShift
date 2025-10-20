@@ -9,7 +9,10 @@ import { FileOutput } from 'lucide-react';
 const OutputNodeConfig = createNode({
   title: 'Output',
   icon: FileOutput,
-  bgColor: 'bg-orange-300',
+  description:"Output data of different type from your workspace",
+  bgColor: 'bg-orange-500',
+  enableVariableExtraction: true, // Enable variable detection
+  variableFieldName: 'outputType', // Extract from outputType field
   fields: [
     {
       label: 'Name',
@@ -18,10 +21,10 @@ const OutputNodeConfig = createNode({
       placeholder: 'e.g., result, final_output'
     },
     {
-      label: 'Type',
+      label: 'Output',
       name: 'outputType',
-      type: 'select',
-      options: ['Text', 'Image']
+      type: 'textarea', // Changed to textarea for multi-line support
+      placeholder: 'Type "{{" to utilize variables'
     }
   ],
   handles: [
@@ -29,6 +32,14 @@ const OutputNodeConfig = createNode({
       type: 'target',
       position: Position.Left,
       id: 'value',
+      dynamicId: 'outputName', // Use outputName field value as handle ID
+      top: '50%'
+    },
+    {
+      type: 'source',
+      position: Position.Right,
+      id: 'output',
+      dynamicId: 'outputName', // Use outputName field value as handle ID
       top: '50%'
     }
   ]
